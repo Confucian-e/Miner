@@ -165,11 +165,11 @@ contract Miner is Ownable, ReentrancyGuard {
     // =========================================== 提取收益 ===========================================
     
     function claimReward15days() view external {
-        _calculateReward(false);
+        _claimReward(false);
     }
 
     function claimReward30days() view external {
-        _calculateReward(true);
+        _claimReward(true);
     }
 
     /**
