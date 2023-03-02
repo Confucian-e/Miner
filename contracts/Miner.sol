@@ -35,7 +35,9 @@ contract Miner is Ownable, ReentrancyGuard {
         uint depositAmount;
         uint lastUpdateTime;
         uint endTime;
+        //建议改为withdrawReward，当收益全部取完之后可以将订单下架
         bool withdrawn;     // false 表示还未提取本金，true 表示已经提取本金
+        bool withdrawReward;
     }
 
     event Deposit(address indexed user, uint amount, uint8 lockDays);
@@ -107,6 +109,7 @@ contract Miner is Ownable, ReentrancyGuard {
             _depositAmount,
             block.timestamp,
             block.timestamp + lockDays * 1 days,
+            false,
             false
         );
 
@@ -142,6 +145,7 @@ contract Miner is Ownable, ReentrancyGuard {
         Order[] storage orders = userOrder[_style][msg.sender];
 
         uint receiveAmount;
+        uint count; //统计移除的订单数
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(targetOrder.endTime <= block.timestamp && !targetOrder.withdrawn) {
@@ -151,7 +155,14 @@ contract Miner is Ownable, ReentrancyGuard {
                 userTotalDepositOrders[_style][msg.sender]--;
                 userTotalDepositAmount[_style][msg.sender] -= receiveAmount;
             }
-            if(targetOrder.endTime > block.timestamp) break;
+            if(targetOrder.endTime > block.timestamp) continue;//改为continue，因为订单不可能是按照顺序排好的
+            if(targetOrder.withdrawReward) {
+                orders[i] = orders[orders.length - 1];
+                count++;
+            }
+        }
+        for(uint i = 0; i < count; i++){
+            orders.pop();
         }
         uint actualReceiveAmount = receiveAmount * 97 / 100;
         fees += receiveAmount - actualReceiveAmount;
@@ -164,11 +175,11 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // =========================================== 提取收益 ===========================================
     
-    function claimReward15days() view external {
+    function claimReward15days() external {
         _claimReward(false);
     }
 
-    function claimReward30days() view external {
+    function claimReward30days() external {
         _claimReward(true);
     }
 
@@ -188,6 +199,9 @@ contract Miner is Ownable, ReentrancyGuard {
             uint time = Math.min(targetOrder.endTime, block.timestamp);
             receiveReward += (time - targetOrder.lastUpdateTime) / 1 days * _calculateRewardPerDay(_style, targetOrder.depositAmount);
             targetOrder.lastUpdateTime = block.timestamp;
+            if(block.timestamp >= targetOrder.endTime) {
+                targetOrder.withdrawReward = true;
+            }
         }
 
         uint actualReceiveReward = receiveReward * 97 / 100;
