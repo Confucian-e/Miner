@@ -103,7 +103,7 @@ contract Miner is Ownable, ReentrancyGuard {
         Order[] storage orders = userOrder[_style][msg.sender];
 
         uint8 lockDays = _style ? 30 : 15;
-        Order storage newOrder = Order(
+        Order memory newOrder = Order(
             _depositAmount,
             block.timestamp,
             block.timestamp + lockDays * 1 days,
@@ -139,11 +139,11 @@ contract Miner is Ownable, ReentrancyGuard {
         require(userTotalDepositOrders[_style][msg.sender] > 0, 'You have no orders');
         require(userTotalDepositAmount[_style][msg.sender] > 0, 'Your deposit amount should exceed zeor');
         // 先获取用户对应的订单数组
-        Order[] orders = userOrder[_style][msg.sender];
+        Order[] storage orders = userOrder[_style][msg.sender];
 
         uint receiveAmount;
         for (uint i = 0; i < orders.length; i++) {
-            Order memory targetOrder = orders[i];
+            Order storage targetOrder = orders[i];
             if(targetOrder.endTime <= block.timestamp && !targetOrder.withdrawn) {
                 receiveAmount += targetOrder.depositAmount;
                 targetOrder.withdrawn = true;
@@ -164,11 +164,11 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // =========================================== 提取收益 ===========================================
     
-    function claimReward15days() external {
+    function claimReward15days() view external {
         _calculateReward(false);
     }
 
-    function claimReward30days() external {
+    function claimReward30days() view external {
         _calculateReward(true);
     }
 
@@ -178,12 +178,12 @@ contract Miner is Ownable, ReentrancyGuard {
      */
     function _claimReward(bool _style) private {
         // 先获取用户对应的订单数组
-        Order[] orders = userOrder[_style][msg.sender];
+        Order[] storage orders = userOrder[_style][msg.sender];
 
         uint receiveReward;
         uint estimateReward = _calculateReward(_style);
         for (uint i = 0; i < orders.length; i++) {
-            Order memory targetOrder = orders[i];
+            Order storage targetOrder = orders[i];
             if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
             uint time = Math.min(targetOrder.endTime, block.timestamp);
             receiveReward += (time - targetOrder.lastUpdateTime) / 1 days * _calculateRewardPerDay(_style, targetOrder.depositAmount);
@@ -205,7 +205,7 @@ contract Miner is Ownable, ReentrancyGuard {
      */
     function _calculateReward(bool _style) view private returns (uint reward) {
         // 先获取用户对应的订单数组
-        Order[] orders = userOrder[_style][msg.sender];
+        Order[] storage orders = userOrder[_style][msg.sender];
         
         for (uint i = 0; i < orders.length; i++) {
             Order memory targetOrder = orders[i];
@@ -220,7 +220,7 @@ contract Miner is Ownable, ReentrancyGuard {
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      * @param _depositAmount 质押数量
      */
-    function _calculateRewardPerDay(bool _style, uint _depositAmount) private returns (uint rewardPerDay) {
+    function _calculateRewardPerDay(bool _style, uint _depositAmount) view private returns (uint rewardPerDay) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
         uint8 lockDays = _style ? 30 : 15;
         rewardPerDay = _depositAmount / elecExpendPerDevice_30days * _totalProfit_30days / _totalDevices / 2 / lockDays;
@@ -228,7 +228,7 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // =========================================== 邀请返佣 ===========================================
 
-    function checkReferralBonus() public returns (uint referral_bonus) {
+    function checkReferralBonus() view public returns (uint referral_bonus) {
         referral_bonus = referralBonus[msg.sender];
     }
 
@@ -253,12 +253,12 @@ contract Miner is Ownable, ReentrancyGuard {
         totalProfit_30days = _totalProfit_30days;
     }
 
-    function getDevicesAndProfit() public returns (uint _totalDevices, uint _totalProfit_30days) {
+    function getDevicesAndProfit() view public returns (uint _totalDevices, uint _totalProfit_30days) {
         _totalDevices = totalDevices;
         _totalProfit_30days = totalProfit_30days;
     }
 
-    function showFees() public onlyOwner returns (uint) {
+    function showFees() view public onlyOwner returns (uint) {
         return fees;
     }
 
