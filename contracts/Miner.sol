@@ -44,58 +44,24 @@ contract Miner is Ownable, ReentrancyGuard {
     event ClaimReferralBonus(address indexed user, uint amount);
     event RedeemFees(address indexed admin, uint amount);
 
-    // ==================================== 用户查看（view external functions） ====================================
+    // ==================================== 用户查看（view public functions） ====================================
 
-    function totalDepositOrders15days() view external returns (uint8) {
-        return _totalDepositOrders(false);
-    }
-
-    function totalDepositOrders30days() view external returns (uint8) {
-        return _totalDepositOrders(true);
-    }
-
-    function _totalDepositOrders(bool _style) view private returns (uint8) {
+    function totalDepositOrders(bool _style) view public returns (uint8) {
         return userTotalDepositOrders[_style][msg.sender];
     }
 
-
-    function totalDepositAmount15days() view external returns (uint) {
-        return _totalDepositAmount(false);
-    }
-
-    function totalDepositAmount30days() view external returns (uint) {
-        return _totalDepositAmount(true);
-    }
-
-    function _totalDepositAmount(bool _style) view private returns (uint) {
+    function totalDepositAmount(bool _style) view public returns (uint) {
         return userTotalDepositAmount[_style][msg.sender];
     }
 
-
-    function calculateReward15days() view external returns (uint) {
-        return _calculateReward(false);
-    }
-
-    function calculateReward30days() view external returns (uint) {
-        return _calculateReward(true);
-    }
-
     // =========================================== 质押 ===========================================
-
-    function deposit15days(uint _depositAmount, address _invitation) external {
-        _deposit(false, _depositAmount, _invitation);
-    }
-
-    function deposit30days(uint _depositAmount, address _invitation) external {
-        _deposit(true, _depositAmount, _invitation);
-    }
 
     /**
      * @dev 质押
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      * @param _depositAmount 质押的数量
      */
-    function _deposit(bool _style, uint _depositAmount, address _invitation) private {
+    function deposit(bool _style, uint _depositAmount, address _invitation) public {
         require(_depositAmount > 0, 'Your deposit amount should exceed zero');
         IERC20(USDC).transferFrom(msg.sender, address(this), _depositAmount);
 
@@ -123,19 +89,11 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // =========================================== 提取本金 ===========================================
 
-    function withdraw15days() external {
-        _withdraw(false);
-    }
-
-    function withdraw30days() external {
-        _withdraw(true);
-    }
-
     /**
      * @dev 提取本金
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
-    function _withdraw(bool _style) private nonReentrant {
+    function withdraw(bool _style) public nonReentrant {
         require(userTotalDepositOrders[_style][msg.sender] > 0, 'You have no orders');
         require(userTotalDepositAmount[_style][msg.sender] > 0, 'Your deposit amount should exceed zeor');
         // 先获取用户对应的订单数组
@@ -163,25 +121,17 @@ contract Miner is Ownable, ReentrancyGuard {
     }
 
     // =========================================== 提取收益 ===========================================
-    
-    function claimReward15days() view external {
-        _claimReward(false);
-    }
-
-    function claimReward30days() view external {
-        _claimReward(true);
-    }
 
     /**
      * @dev 提取收益（收益大于 50 USDC 允许随时提取）
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
-    function _claimReward(bool _style) private {
+    function claimReward(bool _style) public nonReentrant {
         // 先获取用户对应的订单数组
         Order[] storage orders = userOrder[_style][msg.sender];
 
         uint receiveReward;
-        uint estimateReward = _calculateReward(_style);
+        uint estimateReward = calculateReward(_style);
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
@@ -203,7 +153,7 @@ contract Miner is Ownable, ReentrancyGuard {
      * @dev 计算用户的收益
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
-    function _calculateReward(bool _style) view private returns (uint reward) {
+    function calculateReward(bool _style) view public returns (uint reward) {
         // 先获取用户对应的订单数组
         Order[] storage orders = userOrder[_style][msg.sender];
         
