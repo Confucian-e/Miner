@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Miner is Ownable, ReentrancyGuard {
     // BSC 链 USDC 地址，精度为 18
-    address constant public USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
+    address constant public USDC = 0x31d0ce72C46940DDb5192D6006E8bC0Ca3Ebd805;
 
     uint constant public elecExpendPerDevice_30days = 1.2195e20;   // 121.95 USDC
 
@@ -30,6 +30,10 @@ contract Miner is Ownable, ReentrancyGuard {
     uint private totalProfit_30days;
     // 积累的手续费，只有管理员能提取
     uint private fees;
+
+    // 返佣比例
+    uint private molecular;
+    uint private denominator;
 
     struct Order {
         uint depositAmount;
@@ -82,7 +86,7 @@ contract Miner is Ownable, ReentrancyGuard {
         userTotalDepositOrders[_style][msg.sender]++;                       // 质押总订单数 +1
         userTotalDepositAmount[_style][msg.sender] += _depositAmount;      // 质押总数 + 新的质押数
 
-        if(_invitation != address(0)) referralBonus[_invitation] += _depositAmount / 100;   // 邀请人奖励，1%
+        if(_invitation != address(0)) referralBonus[_invitation] += _depositAmount * molecular / denominator;   // 邀请人奖励
 
         emit Deposit(msg.sender, _depositAmount, lockDays);
     }
@@ -218,5 +222,16 @@ contract Miner is Ownable, ReentrancyGuard {
         IERC20(USDC).transfer(msg.sender, fee_amount);
 
         emit RedeemFees(msg.sender, fee_amount);
+    }
+
+    // 设置返佣比例，分子 - 分母
+    function setProportion(uint _molecular, uint _denominator) public onlyOwner {
+        molecular = _molecular;
+        denominator = _denominator;
+    }
+
+    function getProportion() view public returns (uint _molecular, uint _denominator) {
+        _molecular = molecular;
+        _denominator = denominator;
     }
 }
