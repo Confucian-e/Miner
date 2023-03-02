@@ -4,8 +4,10 @@ import { HardhatUserConfig } from "hardhat/types";
 dotenv.config({ path: './.env' });
 
 const ALCHEMY_API_KEY = process.env.Alchemy_api_key;
-const PRIVATE_KEY: string = process.env.Private_key!;
-const ETHERSCAN_API_KEY = process.env.Etherscan_api_key;
+const PRIVATE_KEY = process.env.Private_key!;
+const Etherscan_API_KEY = process.env.Etherscan_api_key;
+const BSC_TestNet_RPC = process.env.BSC_TestNet_RPC;
+const BscScan_API_KEY = process.env.BscScan_api_key;
 
 const config: HardhatUserConfig = {
   networks: {
@@ -13,10 +15,17 @@ const config: HardhatUserConfig = {
       url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
       accounts: [PRIVATE_KEY],
     },
+    bsc_testnet: {
+      url: `${BSC_TestNet_RPC}`,
+      accounts: [PRIVATE_KEY],
+    },
   },
 
   etherscan: {
-    apiKey: ETHERSCAN_API_KEY,
+    apiKey: {
+      goerli: Etherscan_API_KEY!,
+      bsc_testnet: BscScan_API_KEY!,
+    }
   },
 
   solidity: "0.8.17"
