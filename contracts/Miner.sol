@@ -76,7 +76,7 @@ contract Miner is Ownable, ReentrancyGuard {
         Order memory newOrder = Order(
             _depositAmount,
             block.timestamp,
-            block.timestamp + lockDays * 1 days,
+            block.timestamp + lockDays * 1 seconds,
             false
         );
 
@@ -104,17 +104,20 @@ contract Miner is Ownable, ReentrancyGuard {
         Order[] storage orders = userOrder[_style][msg.sender];
 
         uint receiveAmount;
+        uint8 count;
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(targetOrder.endTime <= block.timestamp && !targetOrder.withdrawn) {
                 receiveAmount += targetOrder.depositAmount;
                 targetOrder.withdrawn = true;
 
-                userTotalDepositOrders[_style][msg.sender]--;
-                userTotalDepositAmount[_style][msg.sender] -= receiveAmount;
+                count++;
             }
             if(targetOrder.endTime > block.timestamp) break;
         }
+        userTotalDepositOrders[_style][msg.sender] -= count;
+        userTotalDepositAmount[_style][msg.sender] -= receiveAmount;
+
         uint actualReceiveAmount = receiveAmount * 97 / 100;
         fees += receiveAmount - actualReceiveAmount;
 
@@ -140,7 +143,7 @@ contract Miner is Ownable, ReentrancyGuard {
             Order storage targetOrder = orders[i];
             if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
             uint time = Math.min(targetOrder.endTime, block.timestamp);
-            receiveReward += (time - targetOrder.lastUpdateTime) / 1 days * _calculateRewardPerDay(_style, targetOrder.depositAmount);
+            receiveReward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(_style, targetOrder.depositAmount);
             targetOrder.lastUpdateTime = block.timestamp;
         }
 
@@ -164,7 +167,8 @@ contract Miner is Ownable, ReentrancyGuard {
         for (uint i = 0; i < orders.length; i++) {
             Order memory targetOrder = orders[i];
             uint time = Math.min(targetOrder.endTime, block.timestamp);
-            reward += (time - targetOrder.lastUpdateTime) / 1 days * _calculateRewardPerDay(_style, targetOrder.depositAmount);
+            if(time <= targetOrder.lastUpdateTime) continue;
+            reward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(_style, targetOrder.depositAmount);
         }
     }
     
