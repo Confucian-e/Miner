@@ -143,6 +143,7 @@ contract Miner is Ownable, ReentrancyGuard {
             Order storage targetOrder = orders[i];
             if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
             uint time = Math.min(targetOrder.endTime, block.timestamp);
+            if(time <= targetOrder.lastUpdateTime) continue;
             receiveReward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(_style, targetOrder.depositAmount);
             targetOrder.lastUpdateTime = block.timestamp;
         }
