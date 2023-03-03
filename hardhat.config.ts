@@ -10,6 +10,7 @@ const BSC_TestNet_RPC = process.env.BSC_TestNet_RPC;
 const BscScan_API_KEY = process.env.BscScan_api_key;
 
 const config: HardhatUserConfig = {
+  defaultNetwork: 'goerli',
   networks: {
     goerli: {
       url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
