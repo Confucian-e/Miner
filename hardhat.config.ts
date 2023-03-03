@@ -24,7 +24,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       goerli: Etherscan_API_KEY!,
-      bsc_testnet: BscScan_API_KEY!,
+      bscTestnet: BscScan_API_KEY!,
     }
   },
 
