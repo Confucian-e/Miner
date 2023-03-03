@@ -50,12 +50,12 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // ==================================== 用户查看（view public functions） ====================================
 
-    function totalDepositOrders(bool _style) view public returns (uint8) {
-        return userTotalDepositOrders[_style][msg.sender];
+    function totalDepositOrders(bool _style, address account) view public returns (uint8) {
+        return userTotalDepositOrders[_style][account];
     }
 
-    function totalDepositAmount(bool _style) view public returns (uint) {
-        return userTotalDepositAmount[_style][msg.sender];
+    function totalDepositAmount(bool _style, address account) view public returns (uint) {
+        return userTotalDepositAmount[_style][account];
     }
 
     // =========================================== 质押 ===========================================
@@ -138,7 +138,7 @@ contract Miner is Ownable, ReentrancyGuard {
         Order[] storage orders = userOrder[_style][msg.sender];
 
         uint receiveReward;
-        uint estimateReward = calculateReward(_style);
+        uint estimateReward = calculateReward(_style, msg.sender);
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
@@ -161,9 +161,9 @@ contract Miner is Ownable, ReentrancyGuard {
      * @dev 计算用户的收益
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
-    function calculateReward(bool _style) view public returns (uint reward) {
+    function calculateReward(bool _style, address account) view public returns (uint reward) {
         // 先获取用户对应的订单数组
-        Order[] storage orders = userOrder[_style][msg.sender];
+        Order[] storage orders = userOrder[_style][account];
         
         for (uint i = 0; i < orders.length; i++) {
             Order memory targetOrder = orders[i];
@@ -187,8 +187,8 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // =========================================== 邀请返佣 ===========================================
 
-    function checkReferralBonus() view public returns (uint referral_bonus) {
-        referral_bonus = referralBonus[msg.sender];
+    function checkReferralBonus(address account) view public returns (uint referral_bonus) {
+        referral_bonus = referralBonus[account];
     }
 
     function claimReferralBonus() external nonReentrant {
