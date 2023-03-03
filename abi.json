@@ -150,6 +150,11 @@
           "internalType": "bool",
           "name": "_style",
           "type": "bool"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
         }
       ],
       "name": "calculateReward",
@@ -164,7 +169,13 @@
       "type": "function"
     },
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
       "name": "checkReferralBonus",
       "outputs": [
         {
@@ -350,6 +361,11 @@
           "internalType": "bool",
           "name": "_style",
           "type": "bool"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
         }
       ],
       "name": "totalDepositAmount",
@@ -369,6 +385,11 @@
           "internalType": "bool",
           "name": "_style",
           "type": "bool"
+        },
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
         }
       ],
       "name": "totalDepositOrders",

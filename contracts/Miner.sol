@@ -192,7 +192,7 @@ contract Miner is Ownable, ReentrancyGuard {
     }
 
     function claimReferralBonus() external nonReentrant {
-        uint referral_bonus = checkReferralBonus();
+        uint referral_bonus = checkReferralBonus(msg.sender);
         require(referral_bonus > 0, 'You have no referral bonus');
         delete referralBonus[msg.sender];
         IERC20(USDC).transfer(msg.sender, referral_bonus);
