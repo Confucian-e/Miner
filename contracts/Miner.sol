@@ -35,6 +35,7 @@ contract Miner is Ownable, ReentrancyGuard {
     uint private molecular;
     uint private denominator;
 
+    // 订单结构体
     struct Order {
         uint depositAmount;
         uint claimedRewardTime;
@@ -50,10 +51,20 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // ==================================== 用户查看（view public functions） ====================================
 
+    /**
+     * @dev 用户现存订单数
+     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
+     * @param account 用户地址
+     */
     function totalDepositOrders(bool _style, address account) view public returns (uint8) {
         return userTotalDepositOrders[_style][account];
     }
 
+    /**
+     * @dev 用户现有质押数
+     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
+     * @param account 用户地址
+     */
     function totalDepositAmount(bool _style, address account) view public returns (uint) {
         return userTotalDepositAmount[_style][account];
     }
@@ -184,10 +195,15 @@ contract Miner is Ownable, ReentrancyGuard {
 
     // =========================================== 邀请返佣 ===========================================
 
+    /**
+     * @dev 查看返佣奖励
+     * @param account 用户地址
+     */
     function checkReferralBonus(address account) view public returns (uint referral_bonus) {
         referral_bonus = referralBonus[account];
     }
 
+    // 提取返佣奖励
     function claimReferralBonus() external nonReentrant {
         uint referral_bonus = checkReferralBonus(msg.sender);
         require(referral_bonus > 0, 'You have no referral bonus');
@@ -214,10 +230,12 @@ contract Miner is Ownable, ReentrancyGuard {
         _totalProfit_30days = totalProfit_30days;
     }
 
+    // 查看累计的手续费
     function showFees() view public onlyOwner returns (uint) {
         return fees;
     }
 
+    // 提取手续费
     function redeemFees() external onlyOwner {
         uint fee_amount = showFees();
         delete fees;
