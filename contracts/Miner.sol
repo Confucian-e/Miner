@@ -40,11 +40,12 @@ contract Miner is Ownable, ReentrancyGuard {
         uint lastUpdateTime;
         uint endTime;
         bool withdrawn;     // false 表示还未提取本金，true 表示已经提取本金
+        uint withdrawTime;
     }
 
-    event Deposit(address indexed user, uint amount, uint8 lockDays);
-    event Withdraw(address indexed user, uint amount, uint8 lockDays);
-    event ClaimReward(address indexed user, uint amount, uint8 lockDays);
+    event Deposit(address indexed user, uint amount, bool lockDays);
+    event Withdraw(address indexed user, uint amount, bool lockDays);
+    event ClaimReward(address indexed user, uint amount, bool lockDays);
     event ClaimReferralBonus(address indexed user, uint amount);
     event RedeemFees(address indexed admin, uint amount);
 
@@ -63,10 +64,10 @@ contract Miner is Ownable, ReentrancyGuard {
     /**
      * @dev 质押
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
-     * @param _depositAmount 质押的数量
+     * @param _depositAmount 质押的数量，最小质押数为 50
      */
     function deposit(bool _style, uint _depositAmount, address _invitation) public {
-        require(_depositAmount > 0, 'Your deposit amount should exceed zero');
+        require(_depositAmount > 50e18, 'Minimum amount is 50 USDC');
         IERC20(USDC).transferFrom(msg.sender, address(this), _depositAmount);
 
         // 先获取用户对应的订单数组
@@ -77,7 +78,8 @@ contract Miner is Ownable, ReentrancyGuard {
             _depositAmount,
             block.timestamp,
             block.timestamp + lockDays * 1 seconds,
-            false
+            false,
+            0
         );
 
         // 将新的订单加入对应数组
@@ -88,7 +90,7 @@ contract Miner is Ownable, ReentrancyGuard {
 
         if(_invitation != address(0)) referralBonus[_invitation] += _depositAmount * molecular / denominator;   // 邀请人奖励
 
-        emit Deposit(msg.sender, _depositAmount, lockDays);
+        emit Deposit(msg.sender, _depositAmount, _style);
     }
 
     // =========================================== 提取本金 ===========================================
@@ -110,11 +112,14 @@ contract Miner is Ownable, ReentrancyGuard {
             if(targetOrder.endTime <= block.timestamp && !targetOrder.withdrawn) {
                 receiveAmount += targetOrder.depositAmount;
                 targetOrder.withdrawn = true;
+                targetOrder.withdrawTime = block.timestamp;
 
                 count++;
             }
             if(targetOrder.endTime > block.timestamp) break;
         }
+        require(receiveAmount > 0, 'Withdrawable amount is zero');
+
         userTotalDepositOrders[_style][msg.sender] -= count;
         userTotalDepositAmount[_style][msg.sender] -= receiveAmount;
 
@@ -123,8 +128,7 @@ contract Miner is Ownable, ReentrancyGuard {
 
         IERC20(USDC).transfer(msg.sender, actualReceiveAmount);
 
-        uint8 lockDays = _style ? 30 : 15;
-        emit Withdraw(msg.sender, actualReceiveAmount, lockDays);
+        emit Withdraw(msg.sender, actualReceiveAmount, _style);
     }
 
     // =========================================== 提取收益 ===========================================
@@ -137,28 +141,26 @@ contract Miner is Ownable, ReentrancyGuard {
         // 先获取用户对应的订单数组
         Order[] storage orders = userOrder[_style][msg.sender];
 
-        uint receiveReward;
-        uint estimateReward = calculateReward(_style, msg.sender);
+        (uint reward, uint estimateReward) = (0, calculateReward(_style, msg.sender));
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
-            uint time = Math.min(targetOrder.endTime, block.timestamp);
+            uint time = targetOrder.withdrawn ? targetOrder.withdrawTime : block.timestamp;
             if(time <= targetOrder.lastUpdateTime) continue;
-            receiveReward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(_style, targetOrder.depositAmount);
+            reward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
             targetOrder.lastUpdateTime = block.timestamp;
         }
 
-        uint actualReceiveReward = receiveReward * 97 / 100;
-        fees += receiveReward - actualReceiveReward;
+        uint receiveReward = reward * 97 / 100;
+        fees += reward - receiveReward;
 
-        IERC20(USDC).transfer(msg.sender, actualReceiveReward);
+        IERC20(USDC).transfer(msg.sender, receiveReward);
 
-        uint8 lockDays = _style ? 30 : 15;
-        emit ClaimReward(msg.sender, actualReceiveReward, lockDays);
+        emit ClaimReward(msg.sender, receiveReward, _style);
     }
 
     /**
-     * @dev 计算用户的收益
+     * @dev 计算用户的收益，未提取本金的继续计息
      * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
     function calculateReward(bool _style, address account) view public returns (uint reward) {
@@ -167,22 +169,20 @@ contract Miner is Ownable, ReentrancyGuard {
         
         for (uint i = 0; i < orders.length; i++) {
             Order memory targetOrder = orders[i];
-            uint time = Math.min(targetOrder.endTime, block.timestamp);
+            uint time = targetOrder.withdrawn ? targetOrder.withdrawTime : block.timestamp;
             if(time <= targetOrder.lastUpdateTime) continue;
-            reward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(_style, targetOrder.depositAmount);
+            reward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
         }
     }
     
 
     /**
      * @dev 计算每天的收益
-     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      * @param _depositAmount 质押数量
      */
-    function _calculateRewardPerDay(bool _style, uint _depositAmount) view private returns (uint rewardPerDay) {
+    function _calculateRewardPerDay(uint _depositAmount) view private returns (uint rewardPerDay) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
-        uint8 lockDays = _style ? 30 : 15;
-        rewardPerDay = _depositAmount / elecExpendPerDevice_30days * _totalProfit_30days / _totalDevices / 2 / lockDays;
+        rewardPerDay = _depositAmount / elecExpendPerDevice_30days * _totalProfit_30days / _totalDevices / 60;
     }
 
     // =========================================== 邀请返佣 ===========================================
