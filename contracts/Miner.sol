@@ -37,9 +37,8 @@ contract Miner is Ownable, ReentrancyGuard {
 
     struct Order {
         uint depositAmount;
-        uint lastUpdateTime;
+        uint claimedRewardTime;
         uint endTime;
-        bool withdrawn;     // false 表示还未提取本金，true 表示已经提取本金
         uint withdrawTime;
     }
 
@@ -78,7 +77,6 @@ contract Miner is Ownable, ReentrancyGuard {
             _depositAmount,
             block.timestamp,
             block.timestamp + lockDays * 1 seconds,
-            false,
             0
         );
 
@@ -109,9 +107,8 @@ contract Miner is Ownable, ReentrancyGuard {
         uint8 count;
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
-            if(targetOrder.endTime <= block.timestamp && !targetOrder.withdrawn) {
+            if(targetOrder.endTime <= block.timestamp && targetOrder.withdrawTime == 0) {
                 receiveAmount += targetOrder.depositAmount;
-                targetOrder.withdrawn = true;
                 targetOrder.withdrawTime = block.timestamp;
 
                 count++;
@@ -145,10 +142,10 @@ contract Miner is Ownable, ReentrancyGuard {
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
-            uint time = targetOrder.withdrawn ? targetOrder.withdrawTime : block.timestamp;
-            if(time <= targetOrder.lastUpdateTime) continue;
-            reward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
-            targetOrder.lastUpdateTime = block.timestamp;
+            uint time = targetOrder.withdrawTime == 0 ? block.timestamp : targetOrder.withdrawTime;
+            if(time <= targetOrder.claimedRewardTime) continue;
+            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
+            targetOrder.claimedRewardTime = block.timestamp;
         }
 
         uint receiveReward = reward * 97 / 100;
@@ -169,9 +166,9 @@ contract Miner is Ownable, ReentrancyGuard {
         
         for (uint i = 0; i < orders.length; i++) {
             Order memory targetOrder = orders[i];
-            uint time = targetOrder.withdrawn ? targetOrder.withdrawTime : block.timestamp;
-            if(time <= targetOrder.lastUpdateTime) continue;
-            reward += (time - targetOrder.lastUpdateTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
+            uint time = targetOrder.withdrawTime == 0 ? block.timestamp : targetOrder.withdrawTime;
+            if(time <= targetOrder.claimedRewardTime) continue;
+            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
         }
     }
     
