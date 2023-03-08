@@ -151,7 +151,7 @@ contract Miner is Ownable, ReentrancyGuard {
             if(targetOrder.endTime > block.timestamp) continue;
             uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
-            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
+            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
             targetOrder.claimedRewardTime = block.timestamp;
         }
 
@@ -174,7 +174,7 @@ contract Miner is Ownable, ReentrancyGuard {
             Order memory targetOrder = orders[i];
             uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
-            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
+            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
         }
     }
     
@@ -183,9 +183,9 @@ contract Miner is Ownable, ReentrancyGuard {
      * @dev 计算每天的收益
      * @param _depositAmount 质押数量
      */
-    function _calculateRewardPerDay(uint _depositAmount) view private returns (uint rewardPerDay) {
+    function _calculateRewardPerMinute(uint _depositAmount) view private returns (uint rewardPerMinute) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
-        rewardPerDay = _depositAmount * _totalProfit_30days / elecExpendPerDevice_30days  / _totalDevices / 50;
+        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_30days  / _totalDevices / 72000;  // 50 * 24 * 60
     }
 
     // =========================================== 邀请返佣 ===========================================
