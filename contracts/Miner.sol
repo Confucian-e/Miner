@@ -73,6 +73,7 @@ contract Miner is Ownable, ReentrancyGuard {
     /**
      * @dev 质押
      * @param _depositAmount 质押的数量，最小质押数为 50
+     * @param _invitation 上级邀请人地址，没有则填零地址
      */
     function deposit(uint _depositAmount, address _invitation) public {
         require(_depositAmount > 50e18, 'Minimum amount is 50 USDC');
@@ -138,7 +139,7 @@ contract Miner is Ownable, ReentrancyGuard {
     // =========================================== 提取收益 ===========================================
 
     /**
-     * @dev 提取收益（收益大于 50 USDC 允许随时提取）
+     * @dev 提取收益
      */
     function claimReward() public nonReentrant {
         // 先获取用户对应的订单数组
