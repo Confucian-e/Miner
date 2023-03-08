@@ -85,7 +85,7 @@ contract Miner is Ownable, ReentrancyGuard {
             _depositAmount,
             block.timestamp,
             block.timestamp + lockTime,
-            0
+            1
         );
 
         // 将新的订单加入对应数组
@@ -114,7 +114,7 @@ contract Miner is Ownable, ReentrancyGuard {
         uint8 count;
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
-            if(targetOrder.endTime <= block.timestamp && targetOrder.withdrawTime == 0) {
+            if(targetOrder.endTime <= block.timestamp && targetOrder.withdrawTime == 1) {
                 receiveAmount += targetOrder.depositAmount;
                 targetOrder.withdrawTime = block.timestamp;
 
@@ -148,7 +148,7 @@ contract Miner is Ownable, ReentrancyGuard {
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(targetOrder.endTime > block.timestamp) continue;
-            uint time = targetOrder.withdrawTime == 0 ? block.timestamp : targetOrder.withdrawTime;
+            uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
             reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
             targetOrder.claimedRewardTime = block.timestamp;
@@ -171,7 +171,7 @@ contract Miner is Ownable, ReentrancyGuard {
         
         for (uint i = 0; i < orders.length; i++) {
             Order memory targetOrder = orders[i];
-            uint time = targetOrder.withdrawTime == 0 ? block.timestamp : targetOrder.withdrawTime;
+            uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
             reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
         }
