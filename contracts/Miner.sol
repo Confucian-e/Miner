@@ -11,18 +11,19 @@ contract Miner is Ownable, ReentrancyGuard {
     address constant public USDC = 0x31d0ce72C46940DDb5192D6006E8bC0Ca3Ebd805;
 
     uint constant public elecExpendPerDevice_30days = 1.2195e20;   // 121.95 USDC
+    uint constant lockTime = 25 seconds;
 
     // 用户邀请返佣奖励
     mapping (address => uint) referralBonus;
 
-    // 用户质押的总数。区分 15/30，false 代表 15，true 代表 30
-    mapping (bool => mapping (address => uint)) userTotalDepositAmount;
+    // 用户质押的总数
+    mapping (address => uint) userTotalDepositAmount;
 
-    // 用户质押的订单数。区分 15/30，false 代表 15，true 代表 30
-    mapping (bool => mapping (address => uint8)) userTotalDepositOrders;
+    // 用户质押的订单数
+    mapping (address => uint8) userTotalDepositOrders;
 
-    // 15/30 => 用户 => 用户的订单数组
-    mapping (bool => mapping (address => Order[])) userOrder;
+    // 用户 => 用户的订单数组
+    mapping (address => Order[]) userOrder;
 
     // 矿场总矿机台数 Y
     uint private totalDevices;
@@ -43,9 +44,9 @@ contract Miner is Ownable, ReentrancyGuard {
         uint withdrawTime;
     }
 
-    event Deposit(address indexed user, uint amount, bool lockDays);
-    event Withdraw(address indexed user, uint amount, bool lockDays);
-    event ClaimReward(address indexed user, uint amount, bool lockDays);
+    event Deposit(address indexed user, uint amount);
+    event Withdraw(address indexed user, uint amount);
+    event ClaimReward(address indexed user, uint amount);
     event ClaimReferralBonus(address indexed user, uint amount);
     event RedeemFees(address indexed admin, uint amount);
 
@@ -53,66 +54,61 @@ contract Miner is Ownable, ReentrancyGuard {
 
     /**
      * @dev 用户现存订单数
-     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      * @param account 用户地址
      */
-    function totalDepositOrders(bool _style, address account) view public returns (uint8) {
-        return userTotalDepositOrders[_style][account];
+    function totalDepositOrders(address account) view public returns (uint8) {
+        return userTotalDepositOrders[account];
     }
 
     /**
      * @dev 用户现有质押数
-     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      * @param account 用户地址
      */
-    function totalDepositAmount(bool _style, address account) view public returns (uint) {
-        return userTotalDepositAmount[_style][account];
+    function totalDepositAmount(address account) view public returns (uint) {
+        return userTotalDepositAmount[account];
     }
 
     // =========================================== 质押 ===========================================
 
     /**
      * @dev 质押
-     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      * @param _depositAmount 质押的数量，最小质押数为 50
      */
-    function deposit(bool _style, uint _depositAmount, address _invitation) public {
+    function deposit(uint _depositAmount, address _invitation) public {
         require(_depositAmount > 50e18, 'Minimum amount is 50 USDC');
         IERC20(USDC).transferFrom(msg.sender, address(this), _depositAmount);
 
         // 先获取用户对应的订单数组
-        Order[] storage orders = userOrder[_style][msg.sender];
+        Order[] storage orders = userOrder[msg.sender];
 
-        uint8 lockDays = _style ? 30 : 15;
         Order memory newOrder = Order(
             _depositAmount,
             block.timestamp,
-            block.timestamp + lockDays * 1 seconds,
+            block.timestamp + lockTime,
             0
         );
 
         // 将新的订单加入对应数组
         orders.push(newOrder);
 
-        userTotalDepositOrders[_style][msg.sender]++;                       // 质押总订单数 +1
-        userTotalDepositAmount[_style][msg.sender] += _depositAmount;      // 质押总数 + 新的质押数
+        userTotalDepositOrders[msg.sender]++;                       // 质押总订单数 +1
+        userTotalDepositAmount[msg.sender] += _depositAmount;      // 质押总数 + 新的质押数
 
         if(_invitation != address(0)) referralBonus[_invitation] += _depositAmount * molecular / denominator;   // 邀请人奖励
 
-        emit Deposit(msg.sender, _depositAmount, _style);
+        emit Deposit(msg.sender, _depositAmount);
     }
 
     // =========================================== 提取本金 ===========================================
 
     /**
      * @dev 提取本金
-     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
-    function withdraw(bool _style) public nonReentrant {
-        require(userTotalDepositOrders[_style][msg.sender] > 0, 'You have no orders');
-        require(userTotalDepositAmount[_style][msg.sender] > 0, 'Your deposit amount should exceed zeor');
+    function withdraw() public nonReentrant {
+        require(userTotalDepositOrders[msg.sender] > 0, 'You have no orders');
+        require(userTotalDepositAmount[msg.sender] > 0, 'Your deposit amount should exceed zeor');
         // 先获取用户对应的订单数组
-        Order[] storage orders = userOrder[_style][msg.sender];
+        Order[] storage orders = userOrder[msg.sender];
 
         uint receiveAmount;
         uint8 count;
@@ -128,31 +124,30 @@ contract Miner is Ownable, ReentrancyGuard {
         }
         require(receiveAmount > 0, 'Withdrawable amount is zero');
 
-        userTotalDepositOrders[_style][msg.sender] -= count;
-        userTotalDepositAmount[_style][msg.sender] -= receiveAmount;
+        userTotalDepositOrders[msg.sender] -= count;
+        userTotalDepositAmount[msg.sender] -= receiveAmount;
 
         uint actualReceiveAmount = receiveAmount * 97 / 100;
         fees += receiveAmount - actualReceiveAmount;
 
         IERC20(USDC).transfer(msg.sender, actualReceiveAmount);
 
-        emit Withdraw(msg.sender, actualReceiveAmount, _style);
+        emit Withdraw(msg.sender, actualReceiveAmount);
     }
 
     // =========================================== 提取收益 ===========================================
 
     /**
      * @dev 提取收益（收益大于 50 USDC 允许随时提取）
-     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
-    function claimReward(bool _style) public nonReentrant {
+    function claimReward() public nonReentrant {
         // 先获取用户对应的订单数组
-        Order[] storage orders = userOrder[_style][msg.sender];
+        Order[] storage orders = userOrder[msg.sender];
 
-        (uint reward, uint estimateReward) = (0, calculateReward(_style, msg.sender));
+        uint reward;
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
-            if(estimateReward < 50e18 && targetOrder.endTime > block.timestamp) continue;
+            if(targetOrder.endTime > block.timestamp) continue;
             uint time = targetOrder.withdrawTime == 0 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
             reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerDay(targetOrder.depositAmount);
@@ -164,16 +159,15 @@ contract Miner is Ownable, ReentrancyGuard {
 
         IERC20(USDC).transfer(msg.sender, receiveReward);
 
-        emit ClaimReward(msg.sender, receiveReward, _style);
+        emit ClaimReward(msg.sender, receiveReward);
     }
 
     /**
      * @dev 计算用户的收益，未提取本金的继续计息
-     * @param _style 矿机类型，false 代表 15 天，true 代表 30 天
      */
-    function calculateReward(bool _style, address account) view public returns (uint reward) {
+    function calculateReward(address account) view public returns (uint reward) {
         // 先获取用户对应的订单数组
-        Order[] storage orders = userOrder[_style][account];
+        Order[] storage orders = userOrder[account];
         
         for (uint i = 0; i < orders.length; i++) {
             Order memory targetOrder = orders[i];
@@ -190,7 +184,7 @@ contract Miner is Ownable, ReentrancyGuard {
      */
     function _calculateRewardPerDay(uint _depositAmount) view private returns (uint rewardPerDay) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
-        rewardPerDay = _depositAmount * _totalProfit_30days / elecExpendPerDevice_30days  / _totalDevices / 60;
+        rewardPerDay = _depositAmount * _totalProfit_30days / elecExpendPerDevice_30days  / _totalDevices / 50;
     }
 
     // =========================================== 邀请返佣 ===========================================

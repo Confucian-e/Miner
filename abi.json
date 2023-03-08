@@ -32,12 +32,6 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "lockDays",
-        "type": "bool"
       }
     ],
     "name": "ClaimReward",
@@ -57,12 +51,6 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "lockDays",
-        "type": "bool"
       }
     ],
     "name": "Deposit",
@@ -120,12 +108,6 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "lockDays",
-        "type": "bool"
       }
     ],
     "name": "Withdraw",
@@ -146,11 +128,6 @@
   },
   {
     "inputs": [
-      {
-        "internalType": "bool",
-        "name": "_style",
-        "type": "bool"
-      },
       {
         "internalType": "address",
         "name": "account",
@@ -195,13 +172,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "bool",
-        "name": "_style",
-        "type": "bool"
-      }
-    ],
+    "inputs": [],
     "name": "claimReward",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -209,11 +180,6 @@
   },
   {
     "inputs": [
-      {
-        "internalType": "bool",
-        "name": "_style",
-        "type": "bool"
-      },
       {
         "internalType": "uint256",
         "name": "_depositAmount",
@@ -358,11 +324,6 @@
   {
     "inputs": [
       {
-        "internalType": "bool",
-        "name": "_style",
-        "type": "bool"
-      },
-      {
         "internalType": "address",
         "name": "account",
         "type": "address"
@@ -381,11 +342,6 @@
   },
   {
     "inputs": [
-      {
-        "internalType": "bool",
-        "name": "_style",
-        "type": "bool"
-      },
       {
         "internalType": "address",
         "name": "account",
@@ -417,13 +373,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "bool",
-        "name": "_style",
-        "type": "bool"
-      }
-    ],
+    "inputs": [],
     "name": "withdraw",
     "outputs": [],
     "stateMutability": "nonpayable",
