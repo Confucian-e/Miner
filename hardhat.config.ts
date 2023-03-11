@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-toolbox";
+import "hardhat-abi-exporter";
 import dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/types";
 dotenv.config({ path: './.env' });
@@ -29,7 +30,18 @@ const config: HardhatUserConfig = {
     }
   },
 
-  solidity: "0.8.17"
+  solidity: "0.8.17",
+
+  abiExporter: {
+    path: './abi',
+    runOnCompile: true,
+    clear: true,
+    flat: true,
+    only: [],
+    spacing: 2,
+    pretty: false,
+    // format: "json",
+  }
 }
 
 export default config;
