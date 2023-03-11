@@ -39,13 +39,14 @@ contract Miner is Ownable, ReentrancyGuard {
     // 订单结构体
     struct Order {
         uint depositAmount;
-        uint claimedRewardTime;
+        uint depositTime;
         uint endTime;
+        uint claimedRewardTime;
         uint withdrawTime;
     }
 
-    event Deposit(address indexed user, uint amount);
-    event Withdraw(address indexed user, uint amount);
+    event Deposit(address indexed user, uint amount, uint depositTime);
+    event Withdraw(address indexed user, uint amount, uint withdrawTime);
     event ClaimReward(address indexed user, uint amount);
     event ClaimReferralBonus(address indexed user, uint amount);
     event RedeemFees(address indexed admin, uint amount);
@@ -74,8 +75,9 @@ contract Miner is Ownable, ReentrancyGuard {
      * @dev 质押
      * @param _depositAmount 质押的数量，最小质押数为 50
      * @param _invitation 上级邀请人地址，没有则填零地址
+     * @param index 返回订单号
      */
-    function deposit(uint _depositAmount, address _invitation) public {
+    function deposit(uint _depositAmount, address _invitation) public returns (uint index) {
         require(_depositAmount > 50e18, 'Minimum amount is 50 USDC');
         IERC20(USDC).transferFrom(msg.sender, address(this), _depositAmount);
 
@@ -86,9 +88,11 @@ contract Miner is Ownable, ReentrancyGuard {
             _depositAmount,
             block.timestamp,
             block.timestamp + lockTime,
+            1,
             1
         );
 
+        index = orders.length;
         // 将新的订单加入对应数组
         orders.push(newOrder);
 
@@ -97,35 +101,28 @@ contract Miner is Ownable, ReentrancyGuard {
 
         if(_invitation != address(0)) referralBonus[_invitation] += _depositAmount * molecular / denominator;   // 邀请人奖励
 
-        emit Deposit(msg.sender, _depositAmount);
+        emit Deposit(msg.sender, _depositAmount, block.timestamp);
     }
 
     // =========================================== 提取本金 ===========================================
 
     /**
      * @dev 提取本金
+     * @param _index 订单号
      */
-    function withdraw() public nonReentrant {
+    function withdraw(uint _index) public nonReentrant {
         require(userTotalDepositOrders[msg.sender] > 0, 'You have no orders');
         require(userTotalDepositAmount[msg.sender] > 0, 'Your deposit amount should exceed zeor');
         // 先获取用户对应的订单数组
         Order[] storage orders = userOrder[msg.sender];
+        Order storage targetOrder = orders[_index];
 
-        uint receiveAmount;
-        uint8 count;
-        for (uint i = 0; i < orders.length; i++) {
-            Order storage targetOrder = orders[i];
-            if(targetOrder.endTime <= block.timestamp && targetOrder.withdrawTime == 1) {
-                receiveAmount += targetOrder.depositAmount;
-                targetOrder.withdrawTime = block.timestamp;
+        require(targetOrder.endTime >= block.timestamp, 'Still in lockdown');
 
-                count++;
-            }
-            if(targetOrder.endTime > block.timestamp) break;
-        }
-        require(receiveAmount > 0, 'Withdrawable amount is zero');
+        targetOrder.withdrawTime = block.timestamp;
+        uint receiveAmount = targetOrder.depositAmount;
 
-        userTotalDepositOrders[msg.sender] -= count;
+        userTotalDepositOrders[msg.sender]--;
         userTotalDepositAmount[msg.sender] -= receiveAmount;
 
         uint actualReceiveAmount = receiveAmount * 97 / 100;
@@ -133,27 +130,23 @@ contract Miner is Ownable, ReentrancyGuard {
 
         IERC20(USDC).transfer(msg.sender, actualReceiveAmount);
 
-        emit Withdraw(msg.sender, actualReceiveAmount);
+        emit Withdraw(msg.sender, actualReceiveAmount, block.timestamp);
     }
 
     // =========================================== 提取收益 ===========================================
 
     /**
      * @dev 提取收益
+     * @param _index 订单号
      */
-    function claimReward() public nonReentrant {
+    function claimReward(uint _index) public nonReentrant {
         // 先获取用户对应的订单数组
         Order[] storage orders = userOrder[msg.sender];
+        Order storage targetOrder = orders[_index];
 
-        uint reward;
-        for (uint i = 0; i < orders.length; i++) {
-            Order storage targetOrder = orders[i];
-            if(targetOrder.endTime > block.timestamp) continue;
-            uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
-            if(time <= targetOrder.claimedRewardTime) continue;
-            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
-            targetOrder.claimedRewardTime = block.timestamp;
-        }
+        uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
+        uint reward = (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
+        targetOrder.claimedRewardTime = block.timestamp;
 
         uint receiveReward = reward * 97 / 100;
         fees += reward - receiveReward;
@@ -185,7 +178,7 @@ contract Miner is Ownable, ReentrancyGuard {
      */
     function _calculateRewardPerMinute(uint _depositAmount) view private returns (uint rewardPerMinute) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
-        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_30days  / _totalDevices / 72000;  // 50 * 24 * 60
+        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_30days  / _totalDevices * 71 / 144000;  // 71% 一天 1440 分钟
     }
 
     // =========================================== 邀请返佣 ===========================================
