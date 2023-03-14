@@ -108,25 +108,26 @@ contract Miner is Ownable, ReentrancyGuard {
 
     /**
      * @dev 提取本金
-     * @param _index 订单号
+     * @param _amount 存款数
      */
-    function withdraw(uint _index) public nonReentrant {
+    function withdraw(uint _amount) public nonReentrant {
         require(userTotalDepositOrders[msg.sender] > 0, 'You have no orders');
         require(userTotalDepositAmount[msg.sender] > 0, 'Your deposit amount should exceed zeor');
-        // 先获取用户对应的订单数组
+
         Order[] storage orders = userOrder[msg.sender];
-        Order storage targetOrder = orders[_index];
-
-        require(targetOrder.endTime >= block.timestamp, 'Still in lockdown');
-
-        targetOrder.withdrawTime = block.timestamp;
-        uint receiveAmount = targetOrder.depositAmount;
+        for(uint i = 0; i < orders.length; i++) {
+            Order storage targetOrder = orders[i];
+            if(targetOrder.depositAmount == _amount && targetOrder.withdrawTime == 1 && targetOrder.endTime >= block.timestamp) {
+                targetOrder.withdrawTime = block.timestamp;
+                break;
+            }
+        }
 
         userTotalDepositOrders[msg.sender]--;
-        userTotalDepositAmount[msg.sender] -= receiveAmount;
+        userTotalDepositAmount[msg.sender] -= _amount;
 
-        uint actualReceiveAmount = receiveAmount * 97 / 100;
-        fees += receiveAmount - actualReceiveAmount;
+        uint actualReceiveAmount = _amount * 97 / 100;
+        fees += _amount - actualReceiveAmount;
 
         IERC20(USDC).transfer(msg.sender, actualReceiveAmount);
 
@@ -137,22 +138,23 @@ contract Miner is Ownable, ReentrancyGuard {
 
     /**
      * @dev 提取收益
-     * @param _index 订单号
      */
-    function claimReward(uint _index) public nonReentrant {
+    function claimReward() public nonReentrant {
         // 先获取用户对应的订单数组
         Order[] storage orders = userOrder[msg.sender];
-        Order storage targetOrder = orders[_index];
-
-        uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
-        uint reward = (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
-        targetOrder.claimedRewardTime = block.timestamp;
+        uint reward;
+        for (uint i = 0; i < orders.length; i++) {
+            Order storage targetOrder = orders[i];
+            if(targetOrder.endTime > block.timestamp) continue;
+            uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
+            if(time <= targetOrder.claimedRewardTime) continue;
+            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
+            targetOrder.claimedRewardTime = block.timestamp;
+        }
 
         uint receiveReward = reward * 97 / 100;
         fees += reward - receiveReward;
-
         IERC20(USDC).transfer(msg.sender, receiveReward);
-
         emit ClaimReward(msg.sender, receiveReward);
     }
 
