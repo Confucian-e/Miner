@@ -161,7 +161,7 @@ contract Miner is Ownable, ReentrancyGuard {
      */
     function _calculateRewardPerMinute(uint _depositAmount) view private returns (uint rewardPerMinute) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
-        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_25days  / _totalDevices * 210 / 25 / MinutesPerDay;
+        rewardPerMinute = _depositAmount / elecExpendPerDevice_25days * _totalProfit_30days / 30 / _totalDevices * 7 / MinutesPerDay;
     }
 
     // =========================================== 邀请返佣 ===========================================
