@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Miner is Ownable, ReentrancyGuard {
     // BSC 链 USDC 地址，精度为 18
-    address constant public USDC = 0x9C02D69211C324eCe70D5bb8F790d50c4F15e976;
+    address constant public USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
 
     uint constant public elecExpendPerDevice_25days = 1016;   // 101.6 USDC 先放大10倍，后面缩小
     uint constant lockTime = 25 days;
