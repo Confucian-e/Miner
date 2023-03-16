@@ -68,7 +68,7 @@ contract Miner is Ownable, ReentrancyGuard {
         Order memory newOrder = Order(
             _depositAmount,
             block.timestamp + lockTime,
-            1,
+            block.timestamp,
             1
         );
 
