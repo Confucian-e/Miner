@@ -93,13 +93,16 @@ contract Miner is Ownable, ReentrancyGuard {
         require(userTotalDepositAmount[msg.sender] > 0, 'Your deposit amount should exceed zeor');
 
         Order[] storage orders = userOrder[msg.sender];
+        bool withdraw_success;
         for(uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
             if(targetOrder.depositAmount == _amount && targetOrder.withdrawTime == 1 && targetOrder.endTime >= block.timestamp) {
                 targetOrder.withdrawTime = block.timestamp;
+                withdraw_success = true;
                 break;
             }
         }
+        require(withdraw_success, 'Your amount is wrong');
 
         userTotalDepositOrders[msg.sender]--;
         userTotalDepositAmount[msg.sender] -= _amount;
