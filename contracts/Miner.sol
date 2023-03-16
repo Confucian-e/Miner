@@ -8,10 +8,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Miner is Ownable, ReentrancyGuard {
     // BSC 链 USDC 地址，精度为 18
-    address constant public USDC = 0x31d0ce72C46940DDb5192D6006E8bC0Ca3Ebd805;
+    address constant public USDC = 0x9C02D69211C324eCe70D5bb8F790d50c4F15e976;
 
-    uint constant public elecExpendPerDevice_30days = 1.2195e20;   // 121.95 USDC
-    uint constant lockTime = 25 seconds;
+    uint constant public elecExpendPerDevice_25days = 101.6e18;   // 101.6 USDC
+    uint constant lockTime = 25 minutes;
+    uint constant MinutesPerDay = 1 days / 1 minutes;
 
     // 用户邀请返佣奖励
     mapping (address => uint) referralBonus;
@@ -39,35 +40,16 @@ contract Miner is Ownable, ReentrancyGuard {
     // 订单结构体
     struct Order {
         uint depositAmount;
-        uint depositTime;
         uint endTime;
         uint claimedRewardTime;
         uint withdrawTime;
     }
 
-    event Deposit(address indexed user, uint amount, uint depositTime);
-    event Withdraw(address indexed user, uint amount, uint withdrawTime);
+    event Deposit(address indexed user, uint amount);
+    event Withdraw(address indexed user, uint amount);
     event ClaimReward(address indexed user, uint amount);
     event ClaimReferralBonus(address indexed user, uint amount);
     event RedeemFees(address indexed admin, uint amount);
-
-    // ==================================== 用户查看（view public functions） ====================================
-
-    /**
-     * @dev 用户现存订单数
-     * @param account 用户地址
-     */
-    function totalDepositOrders(address account) view public returns (uint8) {
-        return userTotalDepositOrders[account];
-    }
-
-    /**
-     * @dev 用户现有质押数
-     * @param account 用户地址
-     */
-    function totalDepositAmount(address account) view public returns (uint) {
-        return userTotalDepositAmount[account];
-    }
 
     // =========================================== 质押 ===========================================
 
@@ -75,10 +57,9 @@ contract Miner is Ownable, ReentrancyGuard {
      * @dev 质押
      * @param _depositAmount 质押的数量，最小质押数为 50
      * @param _invitation 上级邀请人地址，没有则填零地址
-     * @param index 返回订单号
      */
-    function deposit(uint _depositAmount, address _invitation) public returns (uint index) {
-        require(_depositAmount > 50e18, 'Minimum amount is 50 USDC');
+    function deposit(uint _depositAmount, address _invitation) public {
+        require(_depositAmount >= 50e18, 'Minimum amount is 50 USDC');
         IERC20(USDC).transferFrom(msg.sender, address(this), _depositAmount);
 
         // 先获取用户对应的订单数组
@@ -86,14 +67,11 @@ contract Miner is Ownable, ReentrancyGuard {
 
         Order memory newOrder = Order(
             _depositAmount,
-            block.timestamp,
             block.timestamp + lockTime,
             1,
             1
         );
 
-        index = orders.length;
-        // 将新的订单加入对应数组
         orders.push(newOrder);
 
         userTotalDepositOrders[msg.sender]++;                       // 质押总订单数 +1
@@ -101,7 +79,7 @@ contract Miner is Ownable, ReentrancyGuard {
 
         if(_invitation != address(0)) referralBonus[_invitation] += _depositAmount * molecular / denominator;   // 邀请人奖励
 
-        emit Deposit(msg.sender, _depositAmount, block.timestamp);
+        emit Deposit(msg.sender, _depositAmount);
     }
 
     // =========================================== 提取本金 ===========================================
@@ -131,7 +109,7 @@ contract Miner is Ownable, ReentrancyGuard {
 
         IERC20(USDC).transfer(msg.sender, actualReceiveAmount);
 
-        emit Withdraw(msg.sender, actualReceiveAmount, block.timestamp);
+        emit Withdraw(msg.sender, actualReceiveAmount);
     }
 
     // =========================================== 提取收益 ===========================================
@@ -148,7 +126,7 @@ contract Miner is Ownable, ReentrancyGuard {
             if(targetOrder.endTime > block.timestamp) continue;
             uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
-            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
+            reward += (time - targetOrder.claimedRewardTime) / 1 minutes * _calculateRewardPerMinute(targetOrder.depositAmount);
             targetOrder.claimedRewardTime = block.timestamp;
         }
 
@@ -169,7 +147,7 @@ contract Miner is Ownable, ReentrancyGuard {
             Order memory targetOrder = orders[i];
             uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
-            reward += (time - targetOrder.claimedRewardTime) / 1 seconds * _calculateRewardPerMinute(targetOrder.depositAmount);
+            reward += (time - targetOrder.claimedRewardTime) / 1 minutes * _calculateRewardPerMinute(targetOrder.depositAmount);
         }
     }
     
@@ -180,7 +158,7 @@ contract Miner is Ownable, ReentrancyGuard {
      */
     function _calculateRewardPerMinute(uint _depositAmount) view private returns (uint rewardPerMinute) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
-        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_30days  / _totalDevices * 71 / 144000;  // 71% 一天 1440 分钟
+        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_25days  / _totalDevices * 2100 / 2500 / MinutesPerDay;
     }
 
     // =========================================== 邀请返佣 ===========================================
