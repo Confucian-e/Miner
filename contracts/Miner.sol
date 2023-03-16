@@ -96,7 +96,7 @@ contract Miner is Ownable, ReentrancyGuard {
         bool withdraw_success;
         for(uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
-            if(targetOrder.depositAmount == _amount && targetOrder.withdrawTime == 1 && targetOrder.endTime >= block.timestamp) {
+            if(targetOrder.depositAmount == _amount && targetOrder.withdrawTime == 1 && targetOrder.endTime <= block.timestamp) {
                 targetOrder.withdrawTime = block.timestamp;
                 withdraw_success = true;
                 break;
