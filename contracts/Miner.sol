@@ -10,8 +10,8 @@ contract Miner is Ownable, ReentrancyGuard {
     // BSC 链 USDC 地址，精度为 18
     address constant public USDC = 0x9C02D69211C324eCe70D5bb8F790d50c4F15e976;
 
-    uint constant public elecExpendPerDevice_25days = 101.6e18;   // 101.6 USDC
-    uint constant lockTime = 25 minutes;
+    uint constant public elecExpendPerDevice_25days = 1016;   // 101.6 USDC 先放大10倍，后面缩小
+    uint constant lockTime = 25 days;
     uint constant MinutesPerDay = 1 days / 1 minutes;
 
     // 用户邀请返佣奖励
@@ -158,7 +158,7 @@ contract Miner is Ownable, ReentrancyGuard {
      */
     function _calculateRewardPerMinute(uint _depositAmount) view private returns (uint rewardPerMinute) {
         (uint _totalDevices, uint _totalProfit_30days) = getDevicesAndProfit();    // gas saving
-        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_25days  / _totalDevices * 2100 / 2500 / MinutesPerDay;
+        rewardPerMinute = _depositAmount * _totalProfit_30days / elecExpendPerDevice_25days  / _totalDevices * 210 / 25 / MinutesPerDay;
     }
 
     // =========================================== 邀请返佣 ===========================================
