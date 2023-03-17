@@ -126,12 +126,12 @@ contract Miner is Ownable, ReentrancyGuard {
         uint reward;
         for (uint i = 0; i < orders.length; i++) {
             Order storage targetOrder = orders[i];
-            if(targetOrder.endTime > block.timestamp) continue;
             uint time = targetOrder.withdrawTime == 1 ? block.timestamp : targetOrder.withdrawTime;
             if(time <= targetOrder.claimedRewardTime) continue;
             reward += (time - targetOrder.claimedRewardTime) / 1 minutes * _calculateRewardPerMinute(targetOrder.depositAmount);
             targetOrder.claimedRewardTime = block.timestamp;
         }
+        require(reward > 0, 'Your reward is zero now');
 
         uint receiveReward = reward * 97 / 100;
         fees += reward - receiveReward;
