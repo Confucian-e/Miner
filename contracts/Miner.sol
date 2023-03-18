@@ -77,7 +77,7 @@ contract Miner is Ownable, ReentrancyGuard {
         userTotalDepositOrders[msg.sender]++;                       // 质押总订单数 +1
         userTotalDepositAmount[msg.sender] += _depositAmount;      // 质押总数 + 新的质押数
 
-        if(_invitation != address(0)) referralBonus[_invitation] += _depositAmount * molecular / denominator;   // 邀请人奖励
+        if(_invitation != address(0) && _invitation != msg.sender) referralBonus[_invitation] += _depositAmount * molecular / denominator;   // 邀请人奖励
 
         emit Deposit(msg.sender, _depositAmount);
     }
